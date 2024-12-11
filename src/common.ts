@@ -1,0 +1,1 @@
+export const queryStaleTime = 24 * 60 * 60 * 1000

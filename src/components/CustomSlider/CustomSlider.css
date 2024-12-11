@@ -1,0 +1,54 @@
+.slider-root {
+    position: relative;
+    display: flex;
+    height: 100%; /* Adjust as needed */
+    width: 20px;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+
+.slider-root[data-orientation='horizontal'] {
+    height: 20px; /* Adjust for horizontal */
+    width: 100%; /* Adjust as needed */
+}
+
+.slider-track {
+    position: relative;
+    height: 100%;
+    width: 4px; /* Thin track */
+    background-color: white; /* Black background */
+    border-radius: 2px;
+}
+.slider-track[data-orientation='horizontal'] {
+    width: 100%; /* Full-width track */
+    height: 4px; /* Thin track */
+}
+
+.slider-range {
+    position: absolute;
+    background: #333; /* Keeps it dark as no specific range styling needed */
+}
+
+.slider-thumb {
+    display: block;
+    background: var(--red-9); /* Red thumb */
+    border-radius: 2px;
+    cursor: pointer;
+}
+.slider-thumb.large {
+    width: 40px; /* Red thumb size */
+    height: 20px;
+}
+.slider-thumb.small {
+    width: 20px; /* Red thumb size */
+    height: 10px;
+}
+.slider-thumb[data-orientation='horizontal'].large {
+    width: 20px; /* Red thumb size */
+    height: 40px;
+}
+.slider-thumb[data-orientation='horizontal'].small {
+    width: 10px; /* Red thumb size */
+    height: 20px;
+}

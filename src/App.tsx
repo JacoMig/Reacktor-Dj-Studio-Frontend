@@ -1,35 +1,36 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import Track from './components/Track/Track'
+import BrowseYTList from './components/BrowseYTList/BrowseYTList'
+import { AudioProvider } from './context/AudioContext'
+import '@radix-ui/themes/styles.css'
+import MainMixer from './components/MainMixer/MainMixer'
 import './App.css'
+import { Box, Flex } from '@radix-ui/themes'
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    return (
+        <>
+            <AudioProvider>
+                <Flex justify={'center'} align={'center'} height={'100vh'}>
+                    <Box
+                        width={{ md: '80vw', lg: '1450px' }}
+                        className="mainContainer"
+                        height={'80vh'}
+                        p={'8'}
+                    >
+                        <Flex height="65%">
+                            <Track type="A" />
+                            <MainMixer />
+                            <Track type="B" />
+                        </Flex>
+                        <Flex mt={"3"} height={'35%'} className="ChooseSongsContainer">
+                            <BrowseYTList />
+                        </Flex>
+                    </Box>
+                </Flex>
+            </AudioProvider>
+        </>
+    )
 }
 
 export default App
