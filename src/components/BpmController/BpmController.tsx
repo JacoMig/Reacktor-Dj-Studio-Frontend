@@ -1,5 +1,4 @@
 import { Box, Button, Flex } from '@radix-ui/themes'
-import CustomSlider from '../CustomSlider/CustomSlider'
 import { useAudioContext } from '../../context/AudioContext'
 
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons'
