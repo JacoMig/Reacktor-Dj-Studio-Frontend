@@ -2,27 +2,20 @@ import { Box, Button, Flex } from '@radix-ui/themes'
 import { useAudioContext } from '../../context/AudioContext'
 
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons'
-import { useMemo, useState } from 'react'
+import { useCallback } from 'react'
 import { KnobBase } from '../KnobBase/KnobBase'
 
 const BpmController = ({ type }: { type: 'A' | 'B' }) => {
     const { Tracks, handleTrackOptions } = useAudioContext()
     const currentTrack = Tracks[type]
     const currentBpm = Tracks[type].currentBpm || 120
-    const [isTrackSync, setIsTrackSync] = useState({
-        A: false,
-        B: false,
-    })
+    
 
     const onChangeBpm = (v: number) => {
         const originalBpm = currentTrack.bpm
         if (!originalBpm) return
         currentTrack.wavesurfer?.current?.setPlaybackRate(v / originalBpm)
         handleTrackOptions({ currentBpm: v }, type)
-        setIsTrackSync((state) => ({
-            ...state,
-            [type]: false,
-        }))
     }
 
     const syncBpm = () => {
@@ -30,30 +23,22 @@ const BpmController = ({ type }: { type: 'A' | 'B' }) => {
             type === 'A' ? Tracks['B'].currentBpm : Tracks['A'].currentBpm
 
         if (Tracks[type].bpm && otherTrackBpm) {
-            if (isTrackSync[type]) {
-                Tracks[type].wavesurfer?.current?.setPlaybackRate(1)
-                handleTrackOptions({ currentBpm: Tracks[type].bpm }, type)
-            } else {
-                Tracks[type].wavesurfer?.current?.setPlaybackRate(
-                    otherTrackBpm / Tracks[type].bpm
-                )
-                handleTrackOptions({ currentBpm: otherTrackBpm }, type)
-            }
-
-            setIsTrackSync((state) => ({
-                ...state,
-                [type]: !state[type],
-            }))
+            
+            Tracks[type].wavesurfer?.current?.playPause()    
+            Tracks[type].wavesurfer?.current?.setPlaybackRate(
+                otherTrackBpm / Tracks[type].bpm
+            )
+           
+            handleTrackOptions({ currentBpm: otherTrackBpm }, type)
+           
         }
     }
 
-    const SyncButtonText = useMemo(() => {
-        return isTrackSync[type] ? 'Unsync' : 'Sync'
-    }, [isTrackSync[type]])
+    const restartPlay = useCallback(() => {
+        Tracks[type].wavesurfer?.current?.playPause()
+     }, [Tracks[type].wavesurfer?.current])
 
-    const SyncButtonVariant = useMemo(() => {
-        return !isTrackSync[type] ? 'outline' : 'classic'
-    }, [isTrackSync[type]])
+    
 
     return (
         <Flex
@@ -64,7 +49,6 @@ const BpmController = ({ type }: { type: 'A' | 'B' }) => {
             direction={'column'}
             pb={'2'}
         >
-            {/* <Box>Bpm: <strong>{currentBpm}</strong></Box> */}
             <Box height={'70%'}>
                 <KnobBase
                     valueDefault={currentBpm}
@@ -101,11 +85,11 @@ const BpmController = ({ type }: { type: 'A' | 'B' }) => {
                             boxShadow: 'inset 0 0 0 1px var(--red-7)',
                             minWidth: '55px'
                         }}
-                        variant={SyncButtonVariant}
-                        onClick={syncBpm}
-                        
+                        variant={"outline"}
+                        onMouseDown={syncBpm}
+                        onMouseUp={restartPlay}
                     >
-                        {SyncButtonText}
+                        Sync
                     </Button>
                     <Button
                         onClick={() => onChangeBpm(currentBpm - 1)}

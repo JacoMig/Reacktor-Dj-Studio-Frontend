@@ -1,7 +1,5 @@
-import { createContext, ReactNode, useContext, useRef, useState } from 'react'
-import { CrossFade, EQ3, Filter, Gain, Player } from 'tone'
-import { Tone } from 'tone/build/esm/core/Tone'
-
+import { createContext, ReactNode, useContext,  useRef, useState } from 'react'
+import { CrossFade, Filter, Gain, Player } from 'tone'
 import WaveSurfer from 'wavesurfer.js'
 import { guess } from 'web-audio-beat-detector'
 
@@ -12,7 +10,6 @@ type Track = {
     bpm?: number
     currentBpm?: number
     volume?: number
-    pausePosition?: number
     bufferLoaded?: boolean
     isLoading?: boolean
     isLooping?: boolean
@@ -33,6 +30,8 @@ interface IAudioContext {
         B: Track
     }
     bpm: number
+    setMasterVolume: (volume: number) => void
+    peakMeterMasterAnimation: () => () => void
     setBpm: React.Dispatch<React.SetStateAction<number>>
     loadBufferToPlayer: (
         audioBuffer: AudioBuffer,
@@ -58,6 +57,8 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             | 'bpm'
             | 'setBpm'
             | 'tooggleFilter'
+            | 'setMasterVolume'
+            | 'peakMeterMasterAnimation'
         >
     >({
         Tracks: {
@@ -78,6 +79,12 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         },
     })
     const [mainBpm, setMainBpm] = useState(120)
+
+    const master = useRef<Gain>(new Gain(0.5).toDestination())
+
+    const setMasterVolume = (volume: number) => {
+        master.current.gain.value = volume
+    }
 
     const crossfade = useRef<CrossFade>()
 
@@ -123,6 +130,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             audioBuffer.getChannelData(0),
             audioBuffer.getChannelData(1),
         ]
+
         const duration = audioBuffer.duration
 
         wavesurfer
@@ -134,9 +142,9 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                         bufferLoaded: true,
                         audioBuffer,
                         bpm: getOriginalBPM.bpm,
-                        pausePosition: 0,
                         volume: 5,
                         currentBpm: getOriginalBPM.bpm,
+                        isLoading: false,
                     },
                     type
                 )
@@ -152,28 +160,77 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         )
             return
 
-            const crossfadeKey = type.toLowerCase() as 'a' | 'b';
-            const filterNode = Tracks.Tracks[type].filter.current;
-            const crossfadeNode = crossfade.current;
-            
-            if (isLowPassConnected) {
-                filterNode.toDestination()
-                crossfadeNode[crossfadeKey].disconnect();
-                crossfadeNode[crossfadeKey].connect(filterNode);
-            } else {
-               /*  crossfadeNode.a.disconnect();
-                crossfadeNode.b.disconnect(); */
-                filterNode.disconnect();
-                crossfadeNode[crossfadeKey].disconnect(filterNode);
-                crossfadeNode[crossfadeKey].toDestination()
-               
-            } 
-       
+        const crossfadeKey = type.toLowerCase() as 'a' | 'b'
+        const filterNode = Tracks.Tracks[type].filter.current
+        const crossfadeNode = crossfade.current
+
+        if (isLowPassConnected) {
+            filterNode.toDestination()
+            crossfadeNode[crossfadeKey].disconnect()
+            crossfadeNode[crossfadeKey].connect(filterNode)
+        } else {
+            filterNode.disconnect()
+            crossfadeNode[crossfadeKey].disconnect(filterNode)
+            crossfadeNode[crossfadeKey].toDestination()
+        }
     }
 
+   
+
+    const tracksPeakMeterAnimation = (
+        analyserNode: AnalyserNode,
+        levelMeterElements: NodeListOf<HTMLDivElement>
+    ) => {
+        const pcmData = new Float32Array(analyserNode.fftSize)
+        
+        let levelAnimationID: number | null = null
+
+        let levelValue = 0
+        const onFrame = () => {
+            analyserNode.getFloatTimeDomainData(pcmData)
+            let sumSquares = 0.0
+            for (const amplitude of pcmData) {
+                sumSquares += amplitude * amplitude
+            }
+
+            const value =
+                Math.floor(Math.sqrt(sumSquares / pcmData.length) * 1000) / 2
+
+            levelValue = 100 - value
+            levelMeterElements.forEach((l) => {
+                if (l)
+                    l.style.setProperty(
+                        '--levelheight',
+                        `inset(${levelValue}% 0 0 0)`
+                    )
+            })
+            levelAnimationID = requestAnimationFrame(onFrame)
+        }
+        onFrame()
+
+        return function () {
+            if (levelAnimationID) cancelAnimationFrame(levelAnimationID)
+            levelMeterElements.forEach((l) => {
+                if (l) l.style.setProperty('--levelheight', `inset(100% 0 0 0)`)
+            })
+        }
+    }
+
+    const peakMeterMasterAnimation = () => {
+        const analyserNode = master.current.context.createAnalyser()
+        master.current.connect(analyserNode)
+        const levelMeterElements = document.querySelectorAll<HTMLDivElement>(
+            `.peakMeterMaster`
+        )
+        return tracksPeakMeterAnimation(analyserNode, levelMeterElements)
+    }
+
+    let peakAnimationMaster: () => void = () => {}
+
     const initToneAndWaveSurfer = (type: 'A' | 'B') => {
+
         if (!(crossfade.current instanceof CrossFade)) {
-            crossfade.current = new CrossFade(0.5)/* .toDestination() */
+            crossfade.current = new CrossFade(0.5) 
             crossfade.current.fade.value = 0.5
         }
 
@@ -188,78 +245,50 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
 
         const wavesurfer = Tracks.Tracks[type].wavesurfer.current
 
-        const analyserNode = crossfade.current.context.createAnalyser()
-        const pcmData = new Float32Array(analyserNode.fftSize)
+         const analyserNode = crossfade.current.context.createAnalyser()
 
         const mediaNode = crossfade.current.context.createMediaElementSource(
             wavesurfer.getMediaElement()
         )
 
-        if (Tracks.Tracks[type].filter) {
+        if (Tracks.Tracks[type].filter) 
             Tracks.Tracks[type].filter.current = new Filter({
-                type: 'lowpass'})/* .toDestination() */
+                type: 'lowpass',
+            }) 
 
-            const gainNode = new Gain()
+        const gainNode = new Gain(1)
 
-            if (type === 'A') {
-                // Tracks.Tracks[type].filter.current.connect(crossfade.current.a)
-                crossfade.current.a.connect(Tracks.Tracks[type].filter.current)
-                crossfade.current.a.toDestination()
-                gainNode.connect(crossfade.current.a)
-            } else {
-                crossfade.current.b.toDestination()
-                gainNode.connect(crossfade.current.b)
-                //crossfade.current.b.connect(Tracks.Tracks[type].filter.current)
-            }
-
-            mediaNode.connect(analyserNode)
-            mediaNode.connect(gainNode.input)
+        if (type === 'A') {
+            crossfade.current.a.connect(master.current)
+            gainNode.connect(crossfade.current.a)
+        } else {
+            crossfade.current.b.connect(master.current)
+            gainNode.connect(crossfade.current.b)
         }
 
-        let levelAnimationID: number | null = null
+        mediaNode.connect(analyserNode)
 
-        let levelMeterElements: NodeListOf<HTMLDivElement>
+        mediaNode.connect(gainNode.input)
+        
+        
+        const levelMeterElements = document.querySelectorAll<HTMLDivElement>(
+            `.peakMeter${type}`
+        )
+        let tracksPeakMeter: () => void = () => {} 
 
         wavesurfer.on('ready', function () {
             wavesurfer.setVolume(0.5)
-
-            levelMeterElements = document.querySelectorAll<HTMLDivElement>(
-                `.peakMeter${type}`
-            )
         })
 
         wavesurfer.on('play', () => {
-            let levelValue = 0
-            const onFrame = () => {
-                analyserNode.getFloatTimeDomainData(pcmData)
-                let sumSquares = 0.0
-                for (const amplitude of pcmData) {
-                    sumSquares += amplitude * amplitude
-                }
-
-                const value =
-                    Math.floor(Math.sqrt(sumSquares / pcmData.length) * 1000) /
-                    2
-
-                levelValue = 100 - value
-                levelMeterElements.forEach((l) => {
-                    if (l)
-                        l.style.setProperty(
-                            '--levelheight',
-                            `inset(${levelValue}% 0 0 0)`
-                        )
-                })
-                levelAnimationID = requestAnimationFrame(onFrame)
-            }
-            onFrame()
+            tracksPeakMeter = tracksPeakMeterAnimation(analyserNode, levelMeterElements)
+            peakAnimationMaster = peakMeterMasterAnimation()
         })
 
         wavesurfer.on('pause', () => {
-            if (levelAnimationID) cancelAnimationFrame(levelAnimationID)
-            levelMeterElements.forEach((l) => {
-                if (l) l.style.setProperty('--levelheight', `inset(100% 0 0 0)`)
-            })
-        })
+            tracksPeakMeter()
+            peakAnimationMaster()
+        }) 
     }
 
     return (
@@ -267,6 +296,8 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             value={{
                 Tracks: Tracks.Tracks,
                 bpm: mainBpm,
+                peakMeterMasterAnimation,
+                setMasterVolume,
                 setBpm: setMainBpm,
                 loadBufferToPlayer,
                 handleTrackOptions,

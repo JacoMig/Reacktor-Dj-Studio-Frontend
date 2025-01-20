@@ -6,7 +6,7 @@
   
   .levels {
     height: 100%;
-    width:  100%;
+    width:  40px;
     border-radius: 2px;
     display: flex;
     flex-direction: row;
@@ -45,24 +45,7 @@
     /* -webkit-clip-path: inset(0% 0 0 0); Safari */
     /* animation: level-animation 2500ms alternate infinite; */
   }
-  /* 
-  @keyframes level-animation {
-    0% {
-       clip-path: inset(0% 0 0 0);
-       -webkit-clip-path: inset(0% -4px 0 -4px);
-    }
-    50% {
-        clip-path: inset(40% 0 0 0);
-      filter: drop-shadow(0px 0px 7px #ffffff70);
-       -webkit-clip-path: inset(40% -4px 0 -4px);
-    }
-    100% {
-        clip-path: inset(20% 0 0 0);
-      
-       -webkit-clip-path: inset(20% -4px 0 -4px);
-    }
-  }
-   */
+  
   
   /* paint gap lines of LEDs */
   .level::after {

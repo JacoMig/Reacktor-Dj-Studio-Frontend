@@ -1,5 +1,5 @@
 
-import {useId, useState} from 'react';
+import {useId} from 'react';
 import {
   KnobHeadless,
   KnobHeadlessLabel,
@@ -12,7 +12,7 @@ import "./KnobBase.css"
 import { Flex } from '@radix-ui/themes';
 
 type KnobHeadlessProps = React.ComponentProps<typeof KnobHeadless>;
-type KnobBaseThumbProps = React.ComponentProps<typeof KnobBaseThumb>;
+
 type KnobBaseProps = Pick<
   KnobHeadlessProps,
   | 'valueMin'
@@ -34,7 +34,6 @@ type KnobBaseProps = Pick<
 
 export function KnobBase({
   label,
-  valueDefault,
   valueRaw,
   valueMin,
   valueMax,

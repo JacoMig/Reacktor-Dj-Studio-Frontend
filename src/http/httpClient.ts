@@ -14,14 +14,3 @@ const httpClient = async (params:IhttpClient):Promise<Response> => {
 }
 
 export default httpClient
-
-/* {
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    method: 'POST',
-    body: JSON.stringify({
-        videoId: 'ycvOoAATBL0',
-    }
-
-} */

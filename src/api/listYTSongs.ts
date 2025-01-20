@@ -1,11 +1,11 @@
 import httpClient from "../http/httpClient"
 
 export type SearchVideoResponse = {
-    timestamp: string,
-    videoId: string,
-    thumbnail?: string,
+    timestamp?: string,
+    videoId?: string,
+    thumbnail: string,
     title: string,
-    url: string
+    id?: number
 }[]
 
 export type SearchResponse = {

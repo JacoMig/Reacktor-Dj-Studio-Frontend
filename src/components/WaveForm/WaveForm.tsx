@@ -1,20 +1,27 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import WaveSurfer from 'wavesurfer.js'
 import { useAudioContext } from '../../context/AudioContext'
-import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
-import { Box } from '@radix-ui/themes'
+import RegionsPlugin, { Region } from 'wavesurfer.js/dist/plugins/regions.esm.js'
+import { Box, Flex, Spinner } from '@radix-ui/themes'
 
 let scale = 1
 
-const WaveForm = ({ type }: { type: 'A' | 'B' }) => {
+const WaveForm = ({
+    type,
+    isSongLoading,
+}: {
+    type: 'A' | 'B'
+    isSongLoading: boolean
+}) => {
     const { Tracks, initToneAndWaveSurfer } = useAudioContext()
+    const [currentRegion, setCurrentRegion] = useState<Region>()   
     const waveClass = `waveformContainer-${type}`
+
     const isLooping = Tracks[type].isLooping
-   
 
     const regionPluginRef = useRef<RegionsPlugin>()
-    const unsuscribeTimeUpdateRef = useRef<() => void>(() => {})
-    const getRegions = regionPluginRef?.current?.getRegions()
+    const timeLoopingUpdateRef = useRef<() => void>(() => {})
+    
 
     useEffect(() => {
         if (
@@ -32,48 +39,52 @@ const WaveForm = ({ type }: { type: 'A' | 'B' }) => {
             progressColor: '#e54666',
             height: 'auto',
             minPxPerSec: 1,
-            barWidth: 2,
-            barGap: 1,
-            barRadius: 2,
-          
+            normalize: false,
             plugins: [regionPluginRef.current],
         })
         regionPluginRef.current.enableDragSelection({
             color: 'rgba(255, 80, 50, 0.4)',
         })
 
-
         regionPluginRef.current.on('region-created', (r) => {
-            unsuscribeTimeUpdateRef.current()
+            timeLoopingUpdateRef.current()
             const regions = regionPluginRef?.current?.getRegions()
+            setCurrentRegion(r)
             if (regions && regions.length > 1) {
-                regions[regions.findIndex((reg) => reg.id !== r.id)].remove()
+               regions.filter((reg) => reg.id !== r.id).forEach((reg) => reg.remove())
             }
+            
+            console.log('regions', regions);
+            console.log('region-created', r);
         })
-
+        
         initToneAndWaveSurfer(type)
     }, [Tracks[type].wavesurfer])
 
-   
-
     useEffect(() => {
-        if(!isLooping) {
-            unsuscribeTimeUpdateRef.current()
+        if (!isLooping) {
+            timeLoopingUpdateRef.current()
             return
         }
-        if(getRegions && getRegions.length) 
-            unsuscribeTimeUpdateRef.current = wavesurferTimeUpdate(getRegions[0])
-          
-        
-    }, [isLooping, getRegions])
+        if (currentRegion) {
+            const currentPlayer = Tracks[type].wavesurfer?.current
+            currentPlayer?.setTime(currentRegion.start)
+            
+            timeLoopingUpdateRef.current = wavesurferTimeUpdate(
+                currentRegion
+            ) 
+           console.log('currentRegion', currentRegion); 
+        }
+       
+            
+    }, [isLooping, currentRegion])
 
-    const wavesurferTimeUpdate = (region: any) => {
+    const wavesurferTimeUpdate = (region: Region) => {
         const currentPlayer = Tracks[type].wavesurfer?.current
         if (currentPlayer)
             return currentPlayer.on('timeupdate', (t) => {
                 const end = region.end
                 const start = region.start
-
                 if (t > end) {
                     currentPlayer.setTime(start)
                 }
@@ -102,7 +113,23 @@ const WaveForm = ({ type }: { type: 'A' | 'B' }) => {
         [Tracks[type].wavesurfer]
     )
 
-    return <Box className={waveClass} height={'90%'} onWheel={onWheel}></Box>
+    return (
+        <>
+            {isSongLoading && (
+                <Flex justify={'center'} align={'center'} height={'100%'}>
+                    <Spinner
+                        style={{ color: 'var(--pink-9)' }}
+                        size={'3'}
+                    ></Spinner>
+                </Flex>
+            )}
+            <Box
+                className={`${waveClass} ${isSongLoading ? 'hidden' : ''}`}
+                height={'90%'}
+                onWheel={onWheel}
+            ></Box>
+        </>
+    )
 }
 
 export default WaveForm

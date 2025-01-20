@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAudioContext } from '../../context/AudioContext'
-import { Box, Button, Flex, Text } from '@radix-ui/themes'
+import { Box, Button, Flex,  Text } from '@radix-ui/themes'
 import {
     PauseIcon,
     PlayIcon,
@@ -10,6 +10,11 @@ import {
 import WaveForm from '../WaveForm/WaveForm'
 import BpmController from '../BpmController/BpmController'
 import LowPassFilter from '../LowPassFilter/LowPassFilter'
+import { useQuery } from '@tanstack/react-query'
+import { fetchDemoSongs } from '../../api/fetchDemoSongs'
+
+
+
 
 interface ITrack {
     type: 'A' | 'B'
@@ -18,14 +23,41 @@ interface ITrack {
 
 const Track = (props: ITrack) => {
     const { type } = props
-    const { Tracks, handleTrackOptions /* , bpm  */ } = useAudioContext()
+    const { Tracks, handleTrackOptions, loadBufferToPlayer } = useAudioContext()
     const [isPlaying, setIsPlaying] = useState(false)
-    /*  const [isTrackSync, setIsTrackSync] = useState({
-        A: false,
-        B: false,
-    }) */
+
+    const demoSong = type === 'A' ? 'dj-krush.mp3' : 'kruder-dorfmeister.mp3'
+
+    const {
+        data,
+        isSuccess,
+        isLoading: isDemoSongLoading,
+    } = useQuery({
+        queryKey: [`loadDemoSong${type}`],
+        queryFn: async () => await fetchDemoSongs(demoSong),
+        refetchOnMount: false,
+        retry: false,
+    })
+
+    const onLoadingDemoTracks = async () => {
+        if (isSuccess) {
+            loadBufferToPlayer(data.audioBuffer, data.blob, type)
+            const title = demoSong.replace('.mp3', '')
+            handleTrackOptions(
+                {
+                    title,
+                },
+                type
+            )
+        }
+    }
+
+    useEffect(() => {
+        onLoadingDemoTracks()
+    }, [isSuccess])
 
     const currentPlayer = Tracks[type].wavesurfer?.current
+    const isCurrentTrackLoading = Tracks[type].isLoading
 
     const startClick = () => {
         if (!currentPlayer) return
@@ -51,29 +83,13 @@ const Track = (props: ITrack) => {
         )
     }
 
-    /*  const syncBpm = () => {
-        const originalBpm = Tracks[type].bpm
-        if (originalBpm) {
-            if (isTrackSync[type])
-                Tracks[type].wavesurfer?.current?.setPlaybackRate(1)
-            else
-                Tracks[type].wavesurfer?.current?.setPlaybackRate(
-                    bpm / originalBpm
-                )
-
-            setIsTrackSync((state) => ({
-                ...state,
-                [type]: !state[type],
-            }))
-        }
-    } */
-
-    /*  const isLoadingBuffer = useMemo(() => {
-        return Tracks[type].isLoading
-    }, []) */
+    const textColor = type === 'A' ? 'teal' : 'jade'
 
     return (
         <Box className="Track" flexGrow={'1'} maxWidth={'40%'}>
+            <Text size={'6'} color={textColor}>
+                Track {type}
+            </Text>
             <Flex direction={'column'} gap={'4'} height={'100%'}>
                 <Flex>
                     <BpmController type={type} />
@@ -82,11 +98,17 @@ const Track = (props: ITrack) => {
 
                 <Box height={'50%'}>
                     {Tracks[type].title && (
-                        <Box height={'10%'} mb={'2'}>
+                        <Box height={'10%'}>
                             <Text>{Tracks[type].title}</Text>
                         </Box>
                     )}
-                    <WaveForm type={type} />
+                    <WaveForm
+                        type={type}
+                        isSongLoading={
+                            (isDemoSongLoading ||
+                                isCurrentTrackLoading) as boolean
+                        }
+                    />
                 </Box>
                 <Flex justify={'between'} gap={'4'} className="buttonsRow">
                     <Button
@@ -112,6 +134,7 @@ const Track = (props: ITrack) => {
                         onClick={toggleLoop}
                         color={`${Tracks[type].isLooping ? 'amber' : 'gray'}`}
                         highContrast={true}
+                        title='Loop over the selection'
                         variant={`${
                             Tracks[type].isLooping ? 'solid' : 'outline'
                         }`}
@@ -119,9 +142,6 @@ const Track = (props: ITrack) => {
                     >
                         <SymbolIcon />
                     </Button>
-                    {/*  <Button style={{flexGrow: 1}} onClick={syncBpm} size={"3"} color={isTrackSync[type] ? "orange" : "amber"} variant="soft">
-                        {isTrackSync[type] ? "Unsync Bpm" : "Sync Bpm"}
-                    </Button> */}
                 </Flex>
             </Flex>
         </Box>
