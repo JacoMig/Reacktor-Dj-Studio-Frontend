@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect,  useState } from 'react'
 import { useAudioContext } from '../../context/AudioContext'
-import { Box, Button, Flex,  Text } from '@radix-ui/themes'
+import { Box, Button, Flex, Text } from '@radix-ui/themes'
 import {
     PauseIcon,
     PlayIcon,
@@ -10,52 +10,19 @@ import {
 import WaveForm from '../WaveForm/WaveForm'
 import BpmController from '../BpmController/BpmController'
 import LowPassFilter from '../LowPassFilter/LowPassFilter'
-import { useQuery } from '@tanstack/react-query'
-import { fetchDemoSongs } from '../../api/fetchDemoSongs'
-
-
-
+import { formatTime } from '../../lib/formatTime'
 
 interface ITrack {
     type: 'A' | 'B'
-    // audioBuffer: AudioBuffer
 }
 
 const Track = (props: ITrack) => {
     const { type } = props
-    const { Tracks, handleTrackOptions, loadBufferToPlayer } = useAudioContext()
+    const { Tracks, handleTrackOptions } = useAudioContext()
     const [isPlaying, setIsPlaying] = useState(false)
 
-    const demoSong = type === 'A' ? 'dj-krush.mp3' : 'kruder-dorfmeister.mp3'
-
-    const {
-        data,
-        isSuccess,
-        isLoading: isDemoSongLoading,
-    } = useQuery({
-        queryKey: [`loadDemoSong${type}`],
-        queryFn: async () => await fetchDemoSongs(demoSong),
-        refetchOnMount: false,
-        retry: false,
-    })
-
-    const onLoadingDemoTracks = async () => {
-        if (isSuccess) {
-            loadBufferToPlayer(data.audioBuffer, data.blob, type)
-            const title = demoSong.replace('.mp3', '')
-            handleTrackOptions(
-                {
-                    title,
-                },
-                type
-            )
-        }
-    }
-
-    useEffect(() => {
-        onLoadingDemoTracks()
-    }, [isSuccess])
-
+    
+    const currentTrack = Tracks[type]
     const currentPlayer = Tracks[type].wavesurfer?.current
     const isCurrentTrackLoading = Tracks[type].isLoading
 
@@ -77,13 +44,32 @@ const Track = (props: ITrack) => {
     const toggleLoop = () => {
         handleTrackOptions(
             {
-                isLooping: !Tracks[type].isLooping,
+                isLooping: !currentTrack.isLooping,
             },
             type
         )
     }
 
+    useEffect(() => {
+        if (!currentPlayer) return 
+        currentPlayer.on('timeupdate', () => {
+            handleTrackOptions(
+                {
+                    remainingTime:
+                        currentPlayer.getDuration() -
+                        currentPlayer.getCurrentTime(),
+                },
+                type
+            )
+        })
+        
+    }, [currentPlayer])
+
+    
+
     const textColor = type === 'A' ? 'teal' : 'jade'
+
+   
 
     return (
         <Box className="Track" flexGrow={'1'} maxWidth={'40%'}>
@@ -95,24 +81,31 @@ const Track = (props: ITrack) => {
                     <BpmController type={type} />
                     <LowPassFilter type={type} />
                 </Flex>
-
                 <Box height={'50%'}>
-                    {Tracks[type].title && (
+                    <Flex justify={'between'} gap={'4'}>
+                        {currentTrack.title && (
+                            <Box className='songTitleText' height={'10%'}>
+                                <Text>{currentTrack.title}</Text>
+                            </Box>
+                        )}
                         <Box height={'10%'}>
-                            <Text>{Tracks[type].title}</Text>
+                            <Text>
+                                {currentTrack.remainingTime ? formatTime(
+                                    currentTrack.remainingTime?.toFixed(2)
+                                ) : null}
+                            </Text>
                         </Box>
-                    )}
+                    </Flex>
                     <WaveForm
                         type={type}
                         isSongLoading={
-                            (isDemoSongLoading ||
-                                isCurrentTrackLoading) as boolean
+                            (isCurrentTrackLoading) as boolean
                         }
                     />
                 </Box>
                 <Flex justify={'between'} gap={'4'} className="buttonsRow">
                     <Button
-                        disabled={!Tracks[type].bufferLoaded}
+                        disabled={!currentTrack.bufferLoaded}
                         onClick={startClick}
                         variant={`${isPlaying ? 'classic' : 'outline'}`}
                         highContrast={true}
@@ -132,11 +125,11 @@ const Track = (props: ITrack) => {
                     </Button>
                     <Button
                         onClick={toggleLoop}
-                        color={`${Tracks[type].isLooping ? 'amber' : 'gray'}`}
+                        color={`${currentTrack.isLooping ? 'amber' : 'gray'}`}
                         highContrast={true}
-                        title='Loop over the selection'
+                        title="Loop over the selection"
                         variant={`${
-                            Tracks[type].isLooping ? 'solid' : 'outline'
+                            currentTrack.isLooping ? 'solid' : 'outline'
                         }`}
                         size={'2'}
                     >

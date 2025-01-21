@@ -63,3 +63,9 @@ div[class*='waveformContainer-'].hidden {
   padding: 6px;
 }
 
+.songTitleText {
+  width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

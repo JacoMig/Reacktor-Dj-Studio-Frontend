@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext,  useRef, useState } from 'react'
 import { CrossFade, Filter, Gain, Player } from 'tone'
 import WaveSurfer from 'wavesurfer.js'
 import { guess } from 'web-audio-beat-detector'
+import { tracksPeakMeterAnimation } from '../lib/tracksPeakMeterAnimation'
 
 type Track = {
     audioBuffer?: AudioBuffer
@@ -13,9 +14,11 @@ type Track = {
     bufferLoaded?: boolean
     isLoading?: boolean
     isLooping?: boolean
+    remainingTime?: number
     low?: number
     mid?: number
     high?: number
+    id?: number
     setAudioBuffer?: React.Dispatch<
         React.SetStateAction<undefined | AudioBuffer>
     >
@@ -58,7 +61,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             | 'setBpm'
             | 'tooggleFilter'
             | 'setMasterVolume'
-            | 'peakMeterMasterAnimation'
+            | 'peakMeterMasterAnimation' 
         >
     >({
         Tracks: {
@@ -68,6 +71,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                 wavesurfer: useRef<WaveSurfer>(),
                 isLooping: false,
                 filter: useRef<Filter>(),
+                remainingTime: undefined
             },
             B: {
                 player: useRef<Player>(),
@@ -75,12 +79,13 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                 wavesurfer: useRef<WaveSurfer>(),
                 isLooping: false,
                 filter: useRef<Filter>(),
+                remainingTime: undefined
             },
         },
     })
     const [mainBpm, setMainBpm] = useState(120)
 
-    const master = useRef<Gain>(new Gain(0.5).toDestination())
+    const master = useRef<Gain>(new Gain(1).toDestination())
 
     const setMasterVolume = (volume: number) => {
         master.current.gain.value = volume
@@ -118,11 +123,20 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             return
 
         const wavesurfer = Tracks.Tracks[type].wavesurfer.current
-
-        const getOriginalBPM = await guess(audioBuffer, {
-            minTempo: 60,
-            maxTempo: 220,
-        })
+        
+        let getOriginalBPM:{
+            bpm: number;
+            offset: number;
+        } | undefined = undefined
+        try {
+            getOriginalBPM = await guess(audioBuffer, {
+                minTempo: 60,
+                maxTempo: 220,
+            })
+        } catch(e) {
+            console.error('guess bpm fails: ', e);
+        }
+        
 
         const url = URL.createObjectURL(new Blob([blob], { type: 'audio/mp3' }))
 
@@ -141,10 +155,11 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                         blob,
                         bufferLoaded: true,
                         audioBuffer,
-                        bpm: getOriginalBPM.bpm,
+                        bpm: getOriginalBPM?.bpm || 0,
                         volume: 5,
-                        currentBpm: getOriginalBPM.bpm,
+                        currentBpm: getOriginalBPM?.bpm || 0,
                         isLoading: false,
+                        remainingTime: duration,
                     },
                     type
                 )
@@ -176,46 +191,6 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
     }
 
    
-
-    const tracksPeakMeterAnimation = (
-        analyserNode: AnalyserNode,
-        levelMeterElements: NodeListOf<HTMLDivElement>
-    ) => {
-        const pcmData = new Float32Array(analyserNode.fftSize)
-        
-        let levelAnimationID: number | null = null
-
-        let levelValue = 0
-        const onFrame = () => {
-            analyserNode.getFloatTimeDomainData(pcmData)
-            let sumSquares = 0.0
-            for (const amplitude of pcmData) {
-                sumSquares += amplitude * amplitude
-            }
-
-            const value =
-                Math.floor(Math.sqrt(sumSquares / pcmData.length) * 1000) / 2
-
-            levelValue = 100 - value
-            levelMeterElements.forEach((l) => {
-                if (l)
-                    l.style.setProperty(
-                        '--levelheight',
-                        `inset(${levelValue}% 0 0 0)`
-                    )
-            })
-            levelAnimationID = requestAnimationFrame(onFrame)
-        }
-        onFrame()
-
-        return function () {
-            if (levelAnimationID) cancelAnimationFrame(levelAnimationID)
-            levelMeterElements.forEach((l) => {
-                if (l) l.style.setProperty('--levelheight', `inset(100% 0 0 0)`)
-            })
-        }
-    }
-
     const peakMeterMasterAnimation = () => {
         const analyserNode = master.current.context.createAnalyser()
         master.current.connect(analyserNode)
@@ -257,7 +232,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             }) 
 
         const gainNode = new Gain(1)
-
+            
         if (type === 'A') {
             crossfade.current.a.connect(master.current)
             gainNode.connect(crossfade.current.a)

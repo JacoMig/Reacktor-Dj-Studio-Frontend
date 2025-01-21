@@ -1,6 +1,8 @@
 import { Avatar, Button, Flex, Table } from '@radix-ui/themes'
 import { SearchVideoResponse } from '../api/listYTSongs'
 import { TrashIcon } from '@radix-ui/react-icons'
+import { useAudioContext } from '../context/AudioContext'
+import { useCallback } from 'react'
 
 interface IListTable {
     onSendToTrackA: () => void
@@ -10,15 +12,23 @@ interface IListTable {
 }
 
 const ListTable = (props: IListTable) => {
+    
+    const {Tracks} = useAudioContext()
+
     const { song: s, onSendToTrackA, onSendToTrackB, removeTrack } = props
+   
+    const isButtonActive = useCallback((type: 'A' | 'B') => {
+        return Tracks[type].id === s.id
+    }, [s, Tracks])
+
     return (
         <Table.Body>
             <Table.Row>
                 <Table.RowHeaderCell>
                     <Avatar src={s.thumbnail} fallback="A" />
                 </Table.RowHeaderCell>
-                <Table.Cell>
-                    {s.title} | {s.timestamp}
+                <Table.Cell style={{width: '60%', fontSize: '1.2rem'}}>
+                    {s.title} {s.timestamp}
                 </Table.Cell>
                 <Table.Cell>
                     <Flex gap={'3'}>
@@ -28,7 +38,7 @@ const ListTable = (props: IListTable) => {
                             style={{
                                 color: 'var(--gray-12)',
                             }}
-                            variant="outline"
+                            variant={isButtonActive('A') ? 'classic' : 'outline'}
                         >
                             A
                         </Button>
@@ -38,7 +48,7 @@ const ListTable = (props: IListTable) => {
                             style={{
                                 color: 'var(--gray-12)',
                             }}
-                            variant="outline"
+                            variant={isButtonActive('B') ? 'classic' : 'outline'}
                         >
                             B
                         </Button>

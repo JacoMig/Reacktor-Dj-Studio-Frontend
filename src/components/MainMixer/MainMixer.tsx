@@ -72,12 +72,12 @@ const MainMixer = () => {
                         <PeakMeter className="peakMeterMaster">
                             <CustomSlider
                                 min={0}
-                                max={10}
+                                max={30}
                                 orientation={'vertical'}
                                 onValueChange={(v: number[]) =>
                                     onChangeFaderVolume(v[0], 'Master')
                                 }
-                                defaultValue={5}
+                                defaultValue={10}
                             />
                         </PeakMeter>
                     </Flex>

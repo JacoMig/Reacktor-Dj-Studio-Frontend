@@ -1,5 +1,5 @@
-import { Button, Flex, Table, TextField } from '@radix-ui/themes'
-import { useEffect, useRef, useState } from 'react'
+import { Button, Flex, Spinner, Table, TextField } from '@radix-ui/themes'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { SearchVideoResponse } from '../../api/listYTSongs'
 import {
     getAllFromCache,
@@ -14,6 +14,8 @@ import { getAudioContext } from '../../lib/audioContextSingleTone'
 import { UploadIcon } from '@radix-ui/react-icons'
 import { useDropzone } from 'react-dropzone'
 import { useToast } from '../../context/ToastContext'
+import { loadDemoSongs } from '../../api/fetchDemoSongs'
+import { useMutation } from '@tanstack/react-query'
 
 const APP_URL = import.meta.env.VITE_APP_URL
 
@@ -24,31 +26,31 @@ type PlayListSong = {
 
 type ListItemSong = SearchVideoResponse[number]
 
-
-
 const Playlist = () => {
     const { handleTrackOptions, loadBufferToPlayer } = useAudioContext()
     const audioCtx = getAudioContext()
-    const {addToast} = useToast()
+    const { addToast } = useToast()
     const [itemSongs, setItemSongs] = useState<ListItemSong[]>([])
+    const [isLoadDemoSongsButtonVisible, setIsLoadDemoSongsButtonVisible] =
+        useState(false)
 
     const [searchQuery, setSearchQuery] = useState<string>('')
+
+    const fileInputRef = useRef<HTMLInputElement | null>(null)
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(event.target.value)
     }
-    const fileInputRef = useRef<HTMLInputElement | null>(null)
 
     const onTriggerUpload = () => {
         if (fileInputRef.current) fileInputRef.current.click()
     }
 
-   
-
     const onSendToTrack = async (id: number, type: 'A' | 'B') => {
         handleTrackOptions(
             {
                 isLoading: true,
+                id,
             },
             type
         )
@@ -77,7 +79,7 @@ const Playlist = () => {
                 title: c.data.title,
             })
         })
-        setItemSongs(arr.sort((a, b) => b.id! - a.id!))
+        return arr
     }
 
     const removeSong = async (id: number) => {
@@ -88,7 +90,7 @@ const Playlist = () => {
             throw e
         }
         setItemSongs((state) => state.filter((s) => s.id !== id))
-        
+        setIsLoadDemoSongsButtonVisible(true)
     }
 
     const filteredSongs = itemSongs.filter((song) => {
@@ -97,16 +99,23 @@ const Playlist = () => {
     })
 
     useEffect(() => {
-        getAllCachedSongs()
+        const initComponentAction = async () => {
+            const cachedSongs = await getAllCachedSongs()
+            if (cachedSongs.length)
+                setItemSongs(cachedSongs.sort((a, b) => b.id! - a.id!))
+            else setIsLoadDemoSongsButtonVisible(true)
+        }
+
+        initComponentAction()
     }, [])
 
-    const onDrop = async (acceptedFiles: File[]) => {
-       
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
         const audioFiles = acceptedFiles.filter(
             (file) =>
                 file.type === 'audio/mpeg' ||
                 file.type === 'audio/wav' ||
-                file.type === 'audio/flac'
+                file.type === 'audio/flac' ||
+                file.type === 'audio/mp3'
         )
 
         if (audioFiles.length === 0) {
@@ -118,9 +127,8 @@ const Playlist = () => {
             return
         }
 
-        acceptedFiles.forEach( async (file) => {
+        acceptedFiles.forEach(async (file) => {
             try {
-               
                 if (file) {
                     const title = file.name.substring(
                         0,
@@ -152,10 +160,10 @@ const Playlist = () => {
                     variant: 'destructive',
                 })
             }
-          })
-    }
+        })
+    }, [])
 
-    const { getRootProps, getInputProps } = useDropzone({
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: {
             'audio/mpeg': ['.mp3'],
@@ -164,9 +172,35 @@ const Playlist = () => {
         },
     })
 
+    const demoSongsMutation = useMutation({
+        mutationFn: async (): Promise<File[]> => {
+            return await loadDemoSongs()
+        },
+        onError: (e) => {
+            console.error('Failed to load demo songs: ', e)
+            addToast({
+                message: 'Failed to load demo songs',
+                variant: 'destructive',
+            })
+            setIsLoadDemoSongsButtonVisible(false)
+        },
+        onSuccess: async (data) => {
+            await onDrop(data)
+            setIsLoadDemoSongsButtonVisible(false)
+        },
+    })
+
     return (
-        <Flex direction={'column'} height={'100%'} >
-            <Flex p={'4'} justify={'start'} align={"center"} gap={'4'}>
+        <Flex direction={'column'} height={'100%'}>
+            <Flex p={'4'} justify={'between'} align={'center'} gap={'4'}>
+                <TextField.Root
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    size="3"
+                    placeholder="Search songs..."
+                    color="jade"
+                    style={{ maxWidth: '50%', flexGrow: 1 }}
+                ></TextField.Root>
                 <input
                     {...getInputProps()}
                     type="file"
@@ -176,24 +210,38 @@ const Playlist = () => {
                 <Button
                     {...getRootProps()}
                     onClick={onTriggerUpload}
-                    size={"4"}
-                    color="tomato"
-                    style={{border: '2px dashed white' }}
+                    size={'4'}
+                    color={!isDragActive ? 'tomato' : 'green'}
+                    style={{ border: '2px dashed white'}}
                 >
-                    <UploadIcon style={{ marginRight: '8px' }} /> Upload / Drag & Drop a song
+                    <UploadIcon style={{ marginRight: '8px' }} /> Upload / Drag
+                    & Drop a song
                 </Button>
-                <TextField.Root
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    size="3"
-                    placeholder="Search songs..."
-                    color="jade"
-                    style={{ maxWidth: '30%', flexGrow: 1 }}
-                ></TextField.Root>
             </Flex>
-            <Table.Root variant="ghost" style={{overflowY: 'auto'}}>
+
+            {demoSongsMutation.isPending ? (
+                <Flex justify={'center'} align={'center'} height={'100%'}>
+                    <Spinner
+                        style={{ color: 'var(--pink-9)' }}
+                        size={'3'}
+                    ></Spinner>
+                </Flex>
+            ) : (
+                isLoadDemoSongsButtonVisible &&
+                !itemSongs.length && (
+                    <Button
+                        onClick={() => demoSongsMutation.mutate()}
+                        size={'3'}
+                        color={'lime'}
+                        style={{ maxWidth: '30%', margin: '20px auto' }}
+                    >
+                        Load Demo Songs
+                    </Button>
+                )
+            )}
+            <Table.Root variant="ghost" style={{ overflowY: 'auto' }}>
                 {filteredSongs.length
-                    ? filteredSongs.map((song, i) => (
+                    ? filteredSongs.map((song) => (
                           <ListTable
                               onSendToTrackA={() =>
                                   onSendToTrack(song.id!, 'A')
@@ -202,7 +250,7 @@ const Playlist = () => {
                                   onSendToTrack(song.id!, 'B')
                               }
                               song={song}
-                              key={`playlist-song-${i}`}
+                              key={`playlist-song-${song.id}`}
                               removeTrack={() => removeSong(song.id!)}
                           />
                       ))
