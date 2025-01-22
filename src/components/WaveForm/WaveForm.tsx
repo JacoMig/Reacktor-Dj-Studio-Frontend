@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import WaveSurfer from 'wavesurfer.js'
 import { useAudioContext } from '../../context/AudioContext'
-import RegionsPlugin, { Region } from 'wavesurfer.js/dist/plugins/regions.esm.js'
+import RegionsPlugin, {
+    Region,
+} from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import { Box, Flex, Spinner } from '@radix-ui/themes'
 
 let scale = 1
@@ -14,14 +16,14 @@ const WaveForm = ({
     isSongLoading: boolean
 }) => {
     const { Tracks, initToneAndWaveSurfer } = useAudioContext()
-    const [currentRegion, setCurrentRegion] = useState<Region>()   
+    const [currentRegion, setCurrentRegion] = useState<Region>()
     const waveClass = `waveformContainer-${type}`
 
     const isLooping = Tracks[type].isLooping
 
     const regionPluginRef = useRef<RegionsPlugin>()
     const timeLoopingUpdateRef = useRef<() => void>(() => {})
-    
+
 
     useEffect(() => {
         if (
@@ -51,46 +53,58 @@ const WaveForm = ({
             const regions = regionPluginRef?.current?.getRegions()
             setCurrentRegion(r)
             if (regions && regions.length > 1) {
-               regions.filter((reg) => reg.id !== r.id).forEach((reg) => reg.remove())
+                regions
+                    .filter((reg) => reg.id !== r.id)
+                    .forEach((reg) => reg.remove())
             }
-            
-            console.log('regions', regions);
-            console.log('region-created', r);
+
+            console.log('region-created', r)
         })
-        
+
+        Tracks[type].wavesurfer.current.on('click', () => {
+            console.log('clearRegions')
+            regionPluginRef.current?.clearRegions()
+            setCurrentRegion(undefined)
+        })
+
         initToneAndWaveSurfer(type)
     }, [Tracks[type].wavesurfer])
+
+
 
     useEffect(() => {
         if (!isLooping) {
             timeLoopingUpdateRef.current()
             return
         }
+
+        const wavesurferTimeUpdate = (region: Region) => {
+            const currentPlayer = Tracks[type].wavesurfer?.current
+            if (currentPlayer)
+                return currentPlayer.on('timeupdate', (t) => {
+                    const end = region.end
+                    const start = region.start
+                    if (t > end) {
+                        currentPlayer.setTime(start)
+                    }
+                })
+            else return () => {}
+        }
+
         if (currentRegion) {
             const currentPlayer = Tracks[type].wavesurfer?.current
             currentPlayer?.setTime(currentRegion.start)
-            
-            timeLoopingUpdateRef.current = wavesurferTimeUpdate(
-                currentRegion
-            ) 
-           console.log('currentRegion', currentRegion); 
+
+            timeLoopingUpdateRef.current = wavesurferTimeUpdate(currentRegion)
+            console.log('currentRegion', currentRegion)
+
+        } else {
+            timeLoopingUpdateRef.current()
+
         }
-       
-            
+
     }, [isLooping, currentRegion])
 
-    const wavesurferTimeUpdate = (region: Region) => {
-        const currentPlayer = Tracks[type].wavesurfer?.current
-        if (currentPlayer)
-            return currentPlayer.on('timeupdate', (t) => {
-                const end = region.end
-                const start = region.start
-                if (t > end) {
-                    currentPlayer.setTime(start)
-                }
-            })
-        else return () => {}
-    }
 
     const onWheel = useCallback(
         (e: React.WheelEvent) => {

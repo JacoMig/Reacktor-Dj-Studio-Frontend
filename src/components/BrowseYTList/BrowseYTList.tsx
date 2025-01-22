@@ -58,7 +58,7 @@ const BrowseYTList = () => {
         if(cachedSongs) 
             setSongs(cachedSongs.videos)
         
-    }, [])
+    }, [cachedSongs])
 
     return (
         <Box height={"100%"} overflowY={"auto"}>

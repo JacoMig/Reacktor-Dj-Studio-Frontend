@@ -18,19 +18,16 @@ const BpmController = ({ type }: { type: 'A' | 'B' }) => {
         handleTrackOptions({ currentBpm: v }, type)
     }
 
-    const syncBpm = () => {
-        const otherTrackBpm =
-            type === 'A' ? Tracks['B'].currentBpm : Tracks['A'].currentBpm
+    const otherTrackBpm = type === 'A' ? Tracks['B'].currentBpm : Tracks['A'].currentBpm
 
+    const syncBpm = () => {
         if (Tracks[type].bpm && otherTrackBpm) {
-            
             Tracks[type].wavesurfer?.current?.playPause()    
             Tracks[type].wavesurfer?.current?.setPlaybackRate(
                 otherTrackBpm / Tracks[type].bpm
             )
            
             handleTrackOptions({ currentBpm: otherTrackBpm }, type)
-           
         }
     }
 
@@ -38,8 +35,8 @@ const BpmController = ({ type }: { type: 'A' | 'B' }) => {
         Tracks[type].wavesurfer?.current?.playPause()
      }, [Tracks[type].wavesurfer?.current])
 
-    
 
+  
     return (
         <Flex
             height={'100%'}
@@ -86,6 +83,7 @@ const BpmController = ({ type }: { type: 'A' | 'B' }) => {
                             minWidth: '55px'
                         }}
                         variant={"outline"}
+                        disabled={!otherTrackBpm}
                         onMouseDown={syncBpm}
                         onMouseUp={restartPlay}
                     >

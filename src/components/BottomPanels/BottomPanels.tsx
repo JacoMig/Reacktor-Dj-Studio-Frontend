@@ -16,7 +16,7 @@ const BottomPanels = () => {
             <Box width={'20%'}>
                 <SideMenu panelSelected={panelSelected} setPanelSelected={setPanelSelected}/>
             </Box>
-            <Box flexGrow={'1'} overflow={"hidden"}>
+            <Box width={'80%'} flexGrow={'1'} overflow={"hidden"}>
                 {panelSelected === "ytbrowse" ? 
                     <BrowseYTList />
                 :

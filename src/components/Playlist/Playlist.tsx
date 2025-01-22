@@ -14,7 +14,7 @@ import { getAudioContext } from '../../lib/audioContextSingleTone'
 import { UploadIcon } from '@radix-ui/react-icons'
 import { useDropzone } from 'react-dropzone'
 import { useToast } from '../../context/ToastContext'
-import { loadDemoSongs } from '../../api/fetchDemoSongs'
+import { fetchDemoSongByUrl, fetchDemoSongsKeys, LoadDemoSongDataResponse } from '../../api/fetchDemoSongs'
 import { useMutation } from '@tanstack/react-query'
 
 const APP_URL = import.meta.env.VITE_APP_URL
@@ -161,7 +161,7 @@ const Playlist = () => {
                 })
             }
         })
-    }, [])
+    }, [addToast])
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -173,8 +173,8 @@ const Playlist = () => {
     })
 
     const demoSongsMutation = useMutation({
-        mutationFn: async (): Promise<File[]> => {
-            return await loadDemoSongs()
+        mutationFn: async (): Promise<LoadDemoSongDataResponse> => {
+            return await fetchDemoSongsKeys()
         },
         onError: (e) => {
             console.error('Failed to load demo songs: ', e)
@@ -185,7 +185,10 @@ const Playlist = () => {
             setIsLoadDemoSongsButtonVisible(false)
         },
         onSuccess: async (data) => {
-            await onDrop(data)
+            const m = await Promise.all(data.map(async d => {
+                return await fetchDemoSongByUrl(d)
+            }))
+            await onDrop(m)
             setIsLoadDemoSongsButtonVisible(false)
         },
     })

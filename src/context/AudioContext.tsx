@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext,  useRef, useState } from 'react'
+import { createContext, ReactNode, useContext, useRef, useState } from 'react'
 import { CrossFade, Filter, Gain, Player } from 'tone'
 import WaveSurfer from 'wavesurfer.js'
 import { guess } from 'web-audio-beat-detector'
@@ -61,7 +61,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             | 'setBpm'
             | 'tooggleFilter'
             | 'setMasterVolume'
-            | 'peakMeterMasterAnimation' 
+            | 'peakMeterMasterAnimation'
         >
     >({
         Tracks: {
@@ -71,7 +71,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                 wavesurfer: useRef<WaveSurfer>(),
                 isLooping: false,
                 filter: useRef<Filter>(),
-                remainingTime: undefined
+                remainingTime: undefined,
             },
             B: {
                 player: useRef<Player>(),
@@ -79,7 +79,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                 wavesurfer: useRef<WaveSurfer>(),
                 isLooping: false,
                 filter: useRef<Filter>(),
-                remainingTime: undefined
+                remainingTime: undefined,
             },
         },
     })
@@ -123,20 +123,21 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
             return
 
         const wavesurfer = Tracks.Tracks[type].wavesurfer.current
-        
-        let getOriginalBPM:{
-            bpm: number;
-            offset: number;
-        } | undefined = undefined
+
+        let getOriginalBPM:
+            | {
+                  bpm: number
+                  offset: number
+              }
+            | undefined = undefined
         try {
             getOriginalBPM = await guess(audioBuffer, {
                 minTempo: 60,
                 maxTempo: 220,
             })
-        } catch(e) {
-            console.error('guess bpm fails: ', e);
+        } catch (e) {
+            console.error('guess bpm fails: ', e)
         }
-        
 
         const url = URL.createObjectURL(new Blob([blob], { type: 'audio/mp3' }))
 
@@ -190,22 +191,19 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         }
     }
 
-   
     const peakMeterMasterAnimation = () => {
         const analyserNode = master.current.context.createAnalyser()
         master.current.connect(analyserNode)
-        const levelMeterElements = document.querySelectorAll<HTMLDivElement>(
-            `.peakMeterMaster`
-        )
+        const levelMeterElements =
+            document.querySelectorAll<HTMLDivElement>(`.peakMeterMaster`)
         return tracksPeakMeterAnimation(analyserNode, levelMeterElements)
     }
 
     let peakAnimationMaster: () => void = () => {}
 
     const initToneAndWaveSurfer = (type: 'A' | 'B') => {
-
         if (!(crossfade.current instanceof CrossFade)) {
-            crossfade.current = new CrossFade(0.5) 
+            crossfade.current = new CrossFade(0.5)
             crossfade.current.fade.value = 0.5
         }
 
@@ -220,19 +218,19 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
 
         const wavesurfer = Tracks.Tracks[type].wavesurfer.current
 
-         const analyserNode = crossfade.current.context.createAnalyser()
+        const analyserNode = crossfade.current.context.createAnalyser()
 
         const mediaNode = crossfade.current.context.createMediaElementSource(
             wavesurfer.getMediaElement()
         )
 
-        if (Tracks.Tracks[type].filter) 
+        if (Tracks.Tracks[type].filter)
             Tracks.Tracks[type].filter.current = new Filter({
                 type: 'lowpass',
-            }) 
+            })
 
         const gainNode = new Gain(1)
-            
+
         if (type === 'A') {
             crossfade.current.a.connect(master.current)
             gainNode.connect(crossfade.current.a)
@@ -244,26 +242,28 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         mediaNode.connect(analyserNode)
 
         mediaNode.connect(gainNode.input)
-        
-        
+
         const levelMeterElements = document.querySelectorAll<HTMLDivElement>(
             `.peakMeter${type}`
         )
-        let tracksPeakMeter: () => void = () => {} 
+        let tracksPeakMeter: () => void = () => {}
 
         wavesurfer.on('ready', function () {
             wavesurfer.setVolume(0.5)
         })
 
         wavesurfer.on('play', () => {
-            tracksPeakMeter = tracksPeakMeterAnimation(analyserNode, levelMeterElements)
+            tracksPeakMeter = tracksPeakMeterAnimation(
+                analyserNode,
+                levelMeterElements
+            )
             peakAnimationMaster = peakMeterMasterAnimation()
         })
 
         wavesurfer.on('pause', () => {
             tracksPeakMeter()
             peakAnimationMaster()
-        }) 
+        })
     }
 
     return (
