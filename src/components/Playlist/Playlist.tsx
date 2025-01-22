@@ -17,7 +17,7 @@ import { useToast } from '../../context/ToastContext'
 import { fetchDemoSongByUrl, fetchDemoSongsKeys, LoadDemoSongDataResponse } from '../../api/fetchDemoSongs'
 import { useMutation } from '@tanstack/react-query'
 
-const APP_URL = import.meta.env.VITE_APP_URL
+
 
 type PlayListSong = {
     blob: Blob
@@ -75,7 +75,7 @@ const Playlist = () => {
         cached.forEach((c) => {
             arr.push({
                 id: c.id,
-                thumbnail: `${APP_URL}/placeholder-music.jpg`,
+                thumbnail: `/placeholder-music.jpg`,
                 title: c.data.title,
             })
         })
@@ -146,7 +146,7 @@ const Playlist = () => {
                         return [
                             ...state,
                             {
-                                thumbnail: `${APP_URL}/placeholder-music.jpg`,
+                                thumbnail: `/placeholder-music.jpg`,
                                 title,
                                 id: Number(savedId),
                             },
