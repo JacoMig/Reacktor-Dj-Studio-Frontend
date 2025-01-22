@@ -11,6 +11,7 @@ import WaveForm from '../WaveForm/WaveForm'
 import BpmController from '../BpmController/BpmController'
 import LowPassFilter from '../LowPassFilter/LowPassFilter'
 import { formatTime } from '../../lib/formatTime'
+import { getAudioContext } from '../../lib/audioContextSingleTone'
 
 interface ITrack {
     type: 'A' | 'B'
@@ -28,7 +29,7 @@ const Track = (props: ITrack) => {
 
     const startClick = () => {
         if (!currentPlayer) return
-
+        getAudioContext()
         if (isPlaying) currentPlayer.pause()
         else currentPlayer.play()
 
