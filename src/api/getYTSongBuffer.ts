@@ -21,7 +21,7 @@ const options = (videoId: string) => ({
 const getYTSongBuffer = async (
     videoId: string
 ): Promise<GetYTSongBufferResponse> => {
-    const audioCtx = getAudioContext()
+    const audioCtx = getAudioContext()()
     
     const cachedData = await getRecordByKey<CachedData>(videoId, YTSTREAMS_TABLE)
 

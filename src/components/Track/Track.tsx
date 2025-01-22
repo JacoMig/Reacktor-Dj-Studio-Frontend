@@ -29,7 +29,8 @@ const Track = (props: ITrack) => {
 
     const startClick = () => {
         if (!currentPlayer) return
-        getAudioContext()
+        
+       
         if (isPlaying) currentPlayer.pause()
         else currentPlayer.play()
 

@@ -28,7 +28,7 @@ type ListItemSong = SearchVideoResponse[number]
 
 const Playlist = () => {
     const { handleTrackOptions, loadBufferToPlayer } = useAudioContext()
-    const audioCtx = getAudioContext()
+    
     const { addToast } = useToast()
     const [itemSongs, setItemSongs] = useState<ListItemSong[]>([])
     const [isLoadDemoSongsButtonVisible, setIsLoadDemoSongsButtonVisible] =
@@ -47,6 +47,8 @@ const Playlist = () => {
     }
 
     const onSendToTrack = async (id: number, type: 'A' | 'B') => {
+        const audioCtx = getAudioContext()()
+        
         handleTrackOptions(
             {
                 isLoading: true,
