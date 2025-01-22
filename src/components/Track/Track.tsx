@@ -11,6 +11,7 @@ import WaveForm from '../WaveForm/WaveForm'
 import BpmController from '../BpmController/BpmController'
 import LowPassFilter from '../LowPassFilter/LowPassFilter'
 import { formatTime } from '../../lib/formatTime'
+import { getContext } from 'tone'
 
 
 interface ITrack {
@@ -27,10 +28,11 @@ const Track = (props: ITrack) => {
     const currentPlayer = Tracks[type].wavesurfer?.current
     const isCurrentTrackLoading = Tracks[type].isLoading
 
-    const startClick = () => {
+    const startClick = async () => {
         if (!currentPlayer) return
         
-       
+        await getContext().resume()
+        
         if (isPlaying) currentPlayer.pause()
         else currentPlayer.play()
 
