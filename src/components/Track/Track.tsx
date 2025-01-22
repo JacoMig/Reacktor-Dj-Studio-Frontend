@@ -11,7 +11,7 @@ import WaveForm from '../WaveForm/WaveForm'
 import BpmController from '../BpmController/BpmController'
 import LowPassFilter from '../LowPassFilter/LowPassFilter'
 import { formatTime } from '../../lib/formatTime'
-import { getAudioContext } from '../../lib/audioContextSingleTone'
+
 
 interface ITrack {
     type: 'A' | 'B'
