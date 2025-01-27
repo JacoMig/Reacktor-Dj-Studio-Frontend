@@ -1,11 +1,11 @@
 
-export const debounce = function (delay: number, cb: () => void) {
+export const debounce = function (delay: number, cb: (query:string) => void) {
     let timer: ReturnType<typeof setTimeout>
-    return function () {
+    return function (query:string) {
         clearTimeout(timer)
 
         timer = setTimeout(() => {
-            cb()
+            cb(query)
         }, delay)
     }
 }
