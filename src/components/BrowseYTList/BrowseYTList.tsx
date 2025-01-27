@@ -18,7 +18,7 @@ const BrowseYTList = () => {
     const cachedSongs = queryClient.getQueryData<SearchResponse>(["listYTSongs"])
 
     const debounceListSongs = useMemo(() => {
-        return debounce(300, async (query) => {
+        return debounce(500, async (query) => {
             let data:SearchResponse | undefined =  undefined
             try {
                 queryClient.invalidateQueries( {
