@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import YTListTable from './YTListTable'
 import { Box, TextField } from '@radix-ui/themes'
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
@@ -17,13 +17,8 @@ const BrowseYTList = () => {
     const queryClient = useQueryClient()
     const cachedSongs = queryClient.getQueryData<SearchResponse>(["listYTSongs"])
 
-
-    const handleSearchYtSongs = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        setIsLoadingSongs(true)
-        const query = e.target.value
-        setInputFieldValue(query)
-       
-        debounce(500, async () => {
+    const debounceListSongs = useMemo(() => {
+        return debounce(300, async (query) => {
             let data:SearchResponse | undefined =  undefined
             try {
                 queryClient.invalidateQueries( {
@@ -51,7 +46,15 @@ const BrowseYTList = () => {
                 }
                 setIsLoadingSongs(false)
             }
-        })()
+        })
+    },[])
+
+    const handleSearchYtSongs = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIsLoadingSongs(true)
+        const query = e.target.value
+        setInputFieldValue(query)
+        debounceListSongs(query)
+       
     }, []) 
 
     useEffect(() => {
